@@ -13,12 +13,22 @@
 //Macro Function  put A as higher 8 bits   B as lower 8 bits   which amalgamated into 16 bits integer
 
 
+enum{
+	POSITION_CONTROL,
+	VELOCITY_CONTROL
+} typedef ServoMode;
 
 
 namespace LX16A {
 
 	void WRITE_ID(HardwareSerial& SerialX, const uint8_t& old_ID, const uint8_t& new_ID);
 	void WRITE_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& angle, const uint16_t& duration);
+	void WRITE_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, ServoMode mode, int16_t& speed);
+	void WRITE_VELOCITY_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& speed);
+	void WRITE_POSITION_CONTROL(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& angle, uint16_t& duration);
+	void WRITE_TRIGGERED_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& angle, uint16_t& duration);
+	void WRITE_MOVE_TIME_TRIGGER(HardwareSerial& SerialX);
+
 }
 
 

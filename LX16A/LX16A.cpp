@@ -108,3 +108,56 @@ void LX16A::WRITE_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, ui
   buf[9] = check_sum(buf);
   SerialX.write(buf, 10);
 }
+
+void LX16A::WRITE_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, ServoMode mode, int16_t& speed) {
+	byte buf[10];
+
+	buf[0] = buf[1] = LX16A_FRAME_HEADER;
+	buf[2] = servo_ID;
+	buf[3] = LX16A_DATLEN_MODE_WRITE;
+	buf[4] = LX16A_COMMID_MODE_WRITE;
+	buf[5] = mode;
+	buf[6] = LX16A_NULL;
+	buf[7] = GET_LOW_BYTE((uint16_t)speed);
+	buf[8] = GET_HIGH_BYTE((uint16_t)speed);
+	buf[9] = check_sum(buf);
+	SerialX.write(buf,10);
+}
+
+void LX16A::WRITE_VELOCITY_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& speed) {
+	LX16A::WRITE_MODE(SerialX,servo_ID,ServoMode::VELOCITY_CONTROL,speed);
+}
+
+void LX16A::WRITE_POSITION_CONTROL(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& angle, uint16_t& duration) {
+	LX16A::WRITE_MODE(SerialX,servo_ID,ServoMode::POSITION_CONTROL,angle);
+	LX16A::WRITE_MOVE_TIME(SerialX,servo_ID,angle,duration);
+}
+
+// TEST THESE LAST TWO FUNCTIONS ON HARDWARE
+
+void LX16A::WRITE_TRIGGERED_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t& angle, uint16_t& duration) {
+	byte buf[10];
+
+	buf[0] = buf[1] = LX16A_FRAME_HEADER;
+	buf[2] = servo_ID;
+	buf[3] = LX16A_DATLEN_TRIGGERED_MOVE_TIME_WRITE;
+	buf[4] = LX16A_COMMID_TRIGGERED_MOVE_TIME_WRITE;
+ 	buf[5] = GET_LOW_BYTE(angle);
+ 	buf[6] = GET_HIGH_BYTE(angle);
+ 	buf[7] = GET_LOW_BYTE(duration);
+ 	buf[8] = GET_HIGH_BYTE(duration);
+ 	buf[9] = check_sum(buf);
+ 	SerialX.write(buf, 10);
+}
+
+void LX16A::WRITE_MOVE_TIME_TRIGGER(HardwareSerial& SerialX) {
+	byte buf[6];
+
+	buf[0] = buf[1] = LX16A_FRAME_HEADER;
+	buf[2] = servo_ID;
+	buf[3] = LX16A_DATLEN_MOVE_TIME_TRIGGER_WRITE;
+	buf[4] = LX16A_COMMID_MOVE_TIME_TRIGGER_WRITE;
+ 	buf[5] = check_sum(buf);
+ 	SerialX.write(buf,6);	
+
+}
