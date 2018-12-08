@@ -96,7 +96,7 @@ float sit_knee_ang = -80;
 
 float sit_wheel_ang = 180;
 
-void Quad::default_pos() {
+void default_pos(){
   LX16A::WRITE_MOVE_TIME(Serial,L1HY,(uint16_t)L1HY_offset,duration);
   LX16A::WRITE_MOVE_TIME(Serial,L1HP,(uint16_t)L1HP_offset,duration);
   LX16A::WRITE_MOVE_TIME(Serial,L1K,(uint16_t)L1K_offset,duration);
@@ -118,7 +118,7 @@ void Quad::default_pos() {
   LX16A::WRITE_MOVE_TIME(Serial,L4A,(uint16_t)L4A_offset,duration);
 }
 
-void Quad::stand() {
+void stand() {
   //default position
   //lock all joints or bring all joints to standing
   //thigh 30, knee -30
@@ -129,7 +129,7 @@ void Quad::stand() {
   LX16A::WRITE_MODE(Serial,L4D,VEL_CONTROL,0);
 
   L1A_ang = (uint16_t)(degrees2norm(45) + L1A_offset);
-  L2A_ang = (uint16_t)(degrees2norm(45) + L2A_offset);
+  L2A_ang = (uint16_t)(degrees2norm(-45) + L2A_offset);
   L3A_ang = (uint16_t)(degrees2norm(45) + L3A_offset);
   L4A_ang = (uint16_t)(degrees2norm(-45) + L4A_offset);
 
@@ -168,7 +168,7 @@ void Quad::stand() {
   delay(duration);
 }
 
-void Quad::stand2sit() {
+void stand2sit() {
   //move motors into the sitting position
   LX16A::WRITE_MODE(Serial,L1D,POS_CONTROL,0);
   LX16A::WRITE_MODE(Serial,L2D,POS_CONTROL,0);
@@ -213,7 +213,7 @@ void Quad::stand2sit() {
   delay(duration);
 }
 
-void Quad::sit2stand(){
+void sit2stand(){
   //move motors from sitting to standing
   //ankles to +- 45 to face out
   //thigh at 30, knee -30, run wheels to allow sprawl
@@ -248,10 +248,10 @@ void Quad::sit2stand(){
 
   delay(duration);
   L1A_ang = (uint16_t)(degrees2norm(45) + L1A_offset);
-  L2A_ang = (uint16_t)(degrees2norm(45) + L2A_offset);
+  L2A_ang = (uint16_t)(degrees2norm(-45) + L2A_offset);
   L3A_ang = (uint16_t)(degrees2norm(45) + L3A_offset);
   L4A_ang = (uint16_t)(degrees2norm(-45) + L4A_offset);
-   LX16A::WRITE_MOVE_TIME(Serial,L1A,L1A_ang,duration);
+  LX16A::WRITE_MOVE_TIME(Serial,L1A,L1A_ang,duration);
   LX16A::WRITE_MOVE_TIME(Serial,L2A,L2A_ang,duration);
   LX16A::WRITE_MOVE_TIME(Serial,L3A,L3A_ang,duration);
   LX16A::WRITE_MOVE_TIME(Serial,L4A,L4A_ang,duration);
@@ -260,12 +260,12 @@ void Quad::sit2stand(){
 }
 
 int mspeed = 500;
-void Quad::rotate(uint16_t des_ang, uint16_t orientation){
+void rotate(uint16_t des_ang, uint16_t orientation){
   //counterclockwise is +1, clockwise is -1
   //turn ankles into rotate mode, run wheels depending on des_ang and orientation(left/right)
   //turn ankles +- 45 into rotate position (make circle)
   L1A_ang = (uint16_t)(degrees2norm(90) + L1A_offset);
-  L2A_ang = (uint16_t)(degrees2norm(90) + L2A_offset);
+  L2A_ang = (uint16_t)(degrees2norm(-90) + L2A_offset);
   L3A_ang = (uint16_t)(degrees2norm(90) + L3A_offset);
   L4A_ang = (uint16_t)(degrees2norm(-90) + L4A_offset);
 
@@ -276,11 +276,11 @@ void Quad::rotate(uint16_t des_ang, uint16_t orientation){
   delay(duration);
   //run wheels to desired angle in the desired direction/orientation
   //only can use velocity control here for a set time
-  uint16_t theta_time = des_ang*50;
+  uint16_t theta_time = des_ang*100;
   int omspeed = orientation*mspeed;
-  LX16A::WRITE_MODE(Serial,L1D,VEL_CONTROL,omspeed);
+  LX16A::WRITE_MODE(Serial,L1D,VEL_CONTROL,-omspeed);
   LX16A::WRITE_MODE(Serial,L2D,VEL_CONTROL,omspeed);
-  LX16A::WRITE_MODE(Serial,L3D,VEL_CONTROL,omspeed);
+  LX16A::WRITE_MODE(Serial,L3D,VEL_CONTROL,-omspeed);
   LX16A::WRITE_MODE(Serial,L4D,VEL_CONTROL,omspeed);
 
   delay(theta_time);
@@ -305,10 +305,11 @@ void Quad::rotate(uint16_t des_ang, uint16_t orientation){
   //return ankles to 0
 }
 
-void Quad::walk(uint16_t velocity,uint16_t wayward){
+void walk(uint16_t velocity,uint16_t wayward){
   //velocity goes from 1-10, wayward: forward = +1, backwards = -1
   //ensure wheels are all facing forward somehow
   //run wheels at velocity for desired duration
+
   L1A_ang = (uint16_t)(degrees2norm(45) + L1A_offset);
   L2A_ang = (uint16_t)(degrees2norm(-45) + L2A_offset);
   L3A_ang = (uint16_t)(degrees2norm(45) + L3A_offset);
@@ -321,11 +322,11 @@ void Quad::walk(uint16_t velocity,uint16_t wayward){
 
   delay(duration);
   //run motors... duration determined by UI
-  int wmspeed = -1000*wayward*velocity/10;
+  int wmspeed = 1000*velocity/10;
 
-  LX16A::WRITE_MODE(Serial,L1D,VEL_CONTROL,wmspeed);
-  LX16A::WRITE_MODE(Serial,L2D,VEL_CONTROL,wmspeed);
-  LX16A::WRITE_MODE(Serial,L3D,VEL_CONTROL,wmspeed);
-  LX16A::WRITE_MODE(Serial,L4D,VEL_CONTROL,wmspeed);
+  LX16A::WRITE_MODE(Serial,L1D,VEL_CONTROL,wayward*wmspeed);
+  LX16A::WRITE_MODE(Serial,L2D,VEL_CONTROL,wayward*wmspeed);
+  LX16A::WRITE_MODE(Serial,L3D,VEL_CONTROL,-wayward*wmspeed);
+  LX16A::WRITE_MODE(Serial,L4D,VEL_CONTROL,-wayward*wmspeed);
 
 }
