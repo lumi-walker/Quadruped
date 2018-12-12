@@ -24,10 +24,7 @@ namespace LX16A {
 	void WRITE_ID(HardwareSerial& SerialX, const uint8_t& old_ID, const uint8_t& new_ID);
 	void WRITE_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t angle, uint16_t duration);
 	void WRITE_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, uint8_t mode, int16_t speed);
-	//void WRITE_VELOCITY_MODE(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t speed);
-	//void WRITE_POSITION_CONTROL(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t angle, uint16_t duration);
-	//void WRITE_TRIGGERED_MOVE_TIME(HardwareSerial& SerialX, const uint8_t& servo_ID, uint16_t angle, uint16_t duration);
-	//void WRITE_MOVE_TIME_TRIGGER(HardwareSerial& SerialX, const uint8_t& servo_ID);
+
 
 }
 

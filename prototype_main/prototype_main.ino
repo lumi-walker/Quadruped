@@ -1,3 +1,4 @@
+#include <QUAD.h>
 enum {
   STAND_STATE,
   SIT_STATE,
