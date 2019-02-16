@@ -1,3 +1,8 @@
+#include <PinChangeInterrupt.h>
+#include <PinChangeInterruptBoards.h>
+#include <PinChangeInterruptPins.h>
+#include <PinChangeInterruptSettings.h>
+
 #include <HX711.h>
 
 #define MA1 7
@@ -76,7 +81,7 @@ void init_motor_pins() {
   pinMode(encA,INPUT);
   pinMode(encB,INPUT);
   attachInterrupt(digitalPinToInterrupt(encA),tick_encA,RISING);
-  attachInterrupt(digitalPinToInterrupt(encB),tick_encB,RISING);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encB),tick_encB,RISING);
   interrupts();
 }
 
@@ -126,6 +131,8 @@ void loop() {
   prevT = micros();
   
   force = scale.get_units();
+  //force = 0;
+  
   ds.force = force;
   ds.tickB = tickB;
   ds.tickA = tickA;
