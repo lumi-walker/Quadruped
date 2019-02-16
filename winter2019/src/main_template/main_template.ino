@@ -1,12 +1,19 @@
+#include <MsTimer2.h>
+#include <Cache.h>
+#include <Derivative.h>
 #include <PinChangeInterrupt.h>
 #include <PinChangeInterruptBoards.h>
 #include <PinChangeInterruptPins.h>
 #include <PinChangeInterruptSettings.h>
-
 #include <HX711.h>
 
-// MOTOR START*******************************************
 
+double Ts_ms = 5;
+double Ts_s = Ts_ms * 1000.00;
+
+/*
+// MOTOR START*******************************************
+*/
 #define MA1 7
 #define MA2 6
 #define MB1 13
@@ -14,23 +21,52 @@
 #define PWMA 9
 #define PWMB 10
 #define STBY 8
+
   //encoder interrupt pins
-  
 #define encA 2 
 #define encB 4 
+
   // variables storing encoder counts
 volatile uint16_t cntA = 0;
+volatile uint16_t cntA_prev = 0;
+volatile uint16_t dcntA;
+
 volatile uint16_t cntB = 0;
+volatile uint16_t cntB_prev = 0;
+volatile uint16_t dcntB;
+
+volatile double cntA_dot = 0;
+volatile double cntA_dot_prev = 0;
+volatile double dcntA_dot;
+
+volatile double cntB_dot = 0;
+volatile double cntB_dot_prev = 0;
+volatile double dcntB_dot;
+
+volatile double cntA_acc = 0;
+volatile double cntB_acc = 0; 
+
+uint8_t filter_window_width = 3;
+
+  // derivative blocks 
+Derivative diffA(Ts_s, filter_window_width);
+Derivative diffB(Ts_s, filter_window_width);
+
   // increments the encoder counts for motors A and B
 void increA();
 void increB();
+
+  // estimate velocity and accel
+void estimateVelocity();
+void estimateAcceleration();
+
   // set pin direction of motor pins
 void init_motor_pins();
+
   // set motor speed and direction
 void run_motors(int IN1, int IN2, int PWM, int speed, int direction);
 
 float pwm;
-bool halted = true;
 // MOTOR END***************************************************
 //**************************************************************
 // DATA LOGGING START*******************************************
@@ -74,6 +110,14 @@ HX711 scale(SDA,SCK);
 
 // LOAD CELL END*******************************************
 
+
+// CONTROL ************************************************
+void do_control() {
+  estimateVelocity();
+  estimateAcceleration();
+
+  
+}
 void setup() {
   
   Serial.begin(9600);
@@ -84,6 +128,10 @@ void setup() {
 
   init_motor_pins();
   prev_time = micros();
+
+    // run controller ever Ts_ms milliseconds
+  MsTimer2::set(Ts_ms,do_control);
+  MsTimer2::start();
 }
 
 
@@ -92,7 +140,7 @@ void loop() {
   update_time(elapsed_time, prev_time);
 
   // measure force from load cell in pounds
-  force = scale.get_units();
+  //force = scale.get_units();
 
   // DO FILTERING
 
@@ -131,6 +179,29 @@ void init_motor_pins() {
   attachInterrupt(digitalPinToInterrupt(encA),increA,RISING);
   attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encB),increB,RISING);
   interrupts();
+}
+
+  // estimate velocity and accel
+void estimateVelocity() {
+  dcntA = cntA - cntA_prev;
+  cntA_prev = cntA;
+
+  dcntB = cntB - cntB_prev;
+  cntB_prev = cntB;
+
+  cntA_dot = diffA.step(dcntA);
+  cntB_dot = diffB.step(dcntB);  
+}
+
+void estimateAcceleration() {
+  dcntA_dot = cntA_dot - cntA_dot_prev;
+  cntA_dot_prev = cntA_dot;
+
+  dcntB_dot = cntB_dot - cntB_dot_prev;
+  cntB_dot_prev = cntB_dot;
+
+  cntA_acc = diffA.step(dcntA_dot);
+  cntB_acc = diffB.step(dcntB_dot);  
 }
 
   // set motor speed and direction
