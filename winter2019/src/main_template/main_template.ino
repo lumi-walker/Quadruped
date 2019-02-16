@@ -1,3 +1,8 @@
+#include <PinChangeInterrupt.h>
+#include <PinChangeInterruptBoards.h>
+#include <PinChangeInterruptPins.h>
+#include <PinChangeInterruptSettings.h>
+
 #include <HX711.h>
 
 // MOTOR START*******************************************
@@ -10,6 +15,7 @@
 #define PWMB 10
 #define STBY 8
   //encoder interrupt pins
+  
 #define encA 2 
 #define encB 4 
   // variables storing encoder counts
@@ -80,6 +86,8 @@ void setup() {
   prev_time = micros();
 }
 
+
+
 void loop() {
   update_time(elapsed_time, prev_time);
 
@@ -121,7 +129,7 @@ void init_motor_pins() {
   pinMode(encA,INPUT);
   pinMode(encB,INPUT);
   attachInterrupt(digitalPinToInterrupt(encA),increA,RISING);
-  attachInterrupt(digitalPinToInterrupt(encB),increB,RISING);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encB),increB,RISING);
   interrupts();
 }
 
