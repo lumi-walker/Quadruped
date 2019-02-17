@@ -1,3 +1,4 @@
+#include <Integrator.h>
 #include <MsTimer2.h>
 #include <Cache.h>
 #include <Derivative.h>
@@ -11,9 +12,8 @@
 double Ts_ms = 5;
 double Ts_s = Ts_ms * 1000.00;
 
-/*
+
 // MOTOR START*******************************************
-*/
 #define MA1 7
 #define MA2 6
 #define MB1 13
@@ -67,8 +67,7 @@ void init_motor_pins();
 void run_motors(int IN1, int IN2, int PWM, int speed, int direction);
 
 float pwm;
-// MOTOR END***************************************************
-//**************************************************************
+
 // DATA LOGGING START*******************************************
 
 struct {
@@ -89,9 +88,6 @@ unsigned long elapsed_time;
 unsigned long prev_time;
 unsigned long CONV_FACTOR = 1000000; // us / s
 
-// DATA LOGGING END*******************************************
-
-//**************************************************************
 
 // LOAD CELL START*******************************************  
   // serial clock
@@ -108,16 +104,46 @@ float force;
   // instantiate HX711 object which is responsible for measuring force input
 HX711 scale(SDA,SCK);
 
-// LOAD CELL END*******************************************
-
 
 // CONTROL ************************************************
-void do_control() {
-  estimateVelocity();
-  estimateAcceleration();
 
-  
-}
+Integrator acc_int(Ts_s);
+Integrator vel_int(Ts_s);
+
+
+
+  // mass of the device
+double M;
+  // desired mass of the device
+double Md;
+  // desired damping ratio
+double Bd;
+
+  // pose setpoint
+double acc_sp;
+double vel_sp;
+double pos_sp;
+
+  // pose estimation from encoder cntA,B and cntA,B_dot
+double acc;
+double vel;
+double pos;
+
+  // position PD controller
+double Kp;
+double Kd;
+
+  // flag indicating new force measurement ready
+bool ready_to_read = false;
+
+  // determine pose setpoint from force measurement
+void do_admittance_control();
+
+  // apply PD position controller
+void do_position_control();
+
+void do_control();
+
 void setup() {
   
   Serial.begin(9600);
@@ -181,29 +207,6 @@ void init_motor_pins() {
   interrupts();
 }
 
-  // estimate velocity and accel
-void estimateVelocity() {
-  dcntA = cntA - cntA_prev;
-  cntA_prev = cntA;
-
-  dcntB = cntB - cntB_prev;
-  cntB_prev = cntB;
-
-  cntA_dot = diffA.step(dcntA);
-  cntB_dot = diffB.step(dcntB);  
-}
-
-void estimateAcceleration() {
-  dcntA_dot = cntA_dot - cntA_dot_prev;
-  cntA_dot_prev = cntA_dot;
-
-  dcntB_dot = cntB_dot - cntB_dot_prev;
-  cntB_dot_prev = cntB_dot;
-
-  cntA_acc = diffA.step(dcntA_dot);
-  cntB_acc = diffB.step(dcntB_dot);  
-}
-
   // set motor speed and direction
 void run_motors(int IN1, int IN2, int PWM, int speed, int direction) {
   boolean Pin1 = LOW;
@@ -218,8 +221,7 @@ void run_motors(int IN1, int IN2, int PWM, int speed, int direction) {
   digitalWrite(IN2,Pin2);
   analogWrite(PWM,speed);
 }
-// MOTOR END*******************************************
-//**************************************************************
+
 // DATA LOGGING START*******************************************
 
 void update_time(unsigned long& time_elapsed, unsigned long& prev_time ) {
@@ -243,4 +245,59 @@ void print_data_formatted(const datlog_s& ds) {
 void print_data_raw(datlog_s ds) {
   Serial.println(String(ds.timestamp) + "," + String(ds.countA) + "," + String(ds.countB) + "," + String(ds.force));
 }
-// DATA LOGGING END*******************************************
+
+// CONTROL START ************************************************
+
+  // estimate velocity and accel
+void estimateVelocity() {
+  dcntA = cntA - cntA_prev;
+  cntA_prev = cntA;
+
+  dcntB = cntB - cntB_prev;
+  cntB_prev = cntB;
+
+  cntA_dot = diffA.step(dcntA);
+  cntB_dot = diffB.step(dcntB);  
+}
+
+void estimateAcceleration() {
+  dcntA_dot = cntA_dot - cntA_dot_prev;
+  cntA_dot_prev = cntA_dot;
+
+  dcntB_dot = cntB_dot - cntB_dot_prev;
+  cntB_dot_prev = cntB_dot;
+
+  cntA_acc = diffA.step(dcntA_dot);
+  cntB_acc = diffB.step(dcntB_dot);  
+}
+
+  // determine pose setpoint from force measurement
+void do_admittance_control() {
+  ready_to_read = scale.is_ready();
+
+  if(ready_to_read) {
+    force = scale.get_units();
+
+    acc_sp = (force + Bd*vel_sp)/Md;
+  }
+
+  vel_sp = acc_int.step(acc_sp);
+  pos_sp = vel_int.step(vel_sp);
+  
+}
+
+  // apply PD position controller
+void do_position_control() {
+  pwm = Kp * ( pos_sp - pos  ) + Kd * (vel_sp - vel);
+
+  run_motors(MA1, MA2, PWMA, pwm, 1);
+  run_motors(MB1, MB2, PWMB, pwm, 1);
+}
+
+void do_control() {
+  // estimate device pose
+
+  do_admittance_control();
+  do_position_control();
+}
+
