@@ -16,8 +16,8 @@
 #define encA 2 //interrupt 0
 #define encB 4 // interrupt 1
 
-#define SCK 5 // serial clock
-#define SDA 3  // serial data
+#define SCK A3 // serial clock
+#define SDA  A2 // serial data
 
 HX711 scale(SDA,SCK);
 float calibration_factor = -185000.51;
@@ -40,11 +40,14 @@ void tick_encA() {
 
 void tick_encB() {
   tickB++;
-  Serial.println("TRIGGERED");
 }
 
 void print_formatted(const Data_s& ds) {
   Serial.println("timestamp: " + String(ds.timestamp) + " // " + "(countA,countB): (" + String(ds.tickA) + "," + String(ds.tickB) + ") // force : " + String(ds.force));
+}
+
+void print_raw(const Data_s& ds) {
+  Serial.println(String(ds.timestamp) + "," + String(ds.tickA) + "," + String(ds.tickB) + "," + String(ds.force));
 }
 void runset(int motor, int speed, int direction){  
   
@@ -154,7 +157,7 @@ void loop() {
     
   }
 
-  print_formatted(ds);
+  print_raw(ds);
 
   
 }

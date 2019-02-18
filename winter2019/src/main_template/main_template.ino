@@ -9,10 +9,53 @@
 #include <HX711.h>
 
 
-double Ts_ms = 5;
-double Ts_s = Ts_ms * 1000.00;
+// SAMPLING CONFIG
+double Ts_ms = 10;
+double Ts_s = Ts_ms / 1000.00;
+
+// DEVICE PARAMS
+double WHEEL_RADIUS = 0.032; // meters
+double GEAR_RATIO = 1/30.00;
+double CPR = 12; // counts per rev
+double COUNT_DOT_TO_LINEAR = (1/CPR) * (GEAR_RATIO) * (2*PI) * WHEEL_RADIUS;
+
+// DATA LOGGING **********************************8*
+
+struct {
+    int16_t countA;
+    int16_t countB;
+    
+    double countA_vel;
+    double countB_vel;
+    
+    double countA_acc;
+    double countB_acc;
 
 
+    double pos_sp;
+    double vel_sp;
+    double acc_sp;
+    
+    float pwmA;
+    float pwmB;
+    
+    float force;
+    double timestamp;
+} typedef datlog_s;
+
+datlog_s ds;
+
+unsigned long elapsed_time;
+unsigned long prev_time;
+unsigned long CONV_FACTOR = 1000000; // us / s
+
+
+void update_time(unsigned long& time_elapsed, unsigned long& prev_time );
+void log_data(datlog_s& ds, const unsigned long& timestamp);
+void print_data_formatted(const datlog_s& ds);
+void print_data_raw(datlog_s ds);
+
+ 
 // MOTOR START*******************************************
 #define MA1 7
 #define MA2 6
@@ -23,17 +66,19 @@ double Ts_s = Ts_ms * 1000.00;
 #define STBY 8
 
   //encoder interrupt pins
-#define encA 2 
-#define encB 4 
+#define encA1 2 
+#define encA2 A4 // grey 
+#define encB1 4
+#define encB2 A5 // purple
 
   // variables storing encoder counts
-volatile uint16_t cntA = 0;
-volatile uint16_t cntA_prev = 0;
-volatile uint16_t dcntA;
+volatile int16_t cntA = 0;
+volatile int16_t cntA_prev = 0;
+volatile int16_t dcntA;
 
-volatile uint16_t cntB = 0;
-volatile uint16_t cntB_prev = 0;
-volatile uint16_t dcntB;
+volatile int16_t cntB = 0;
+volatile int16_t cntB_prev = 0;
+volatile int16_t dcntB;
 
 volatile double cntA_dot = 0;
 volatile double cntA_dot_prev = 0;
@@ -57,6 +102,7 @@ void increA();
 void increB();
 
   // estimate velocity and accel
+void estimatePose();
 void estimateVelocity();
 void estimateAcceleration();
 
@@ -64,36 +110,17 @@ void estimateAcceleration();
 void init_motor_pins();
 
   // set motor speed and direction
-void run_motors(int IN1, int IN2, int PWM, int speed, int direction);
+void run_motorA(int PWM);
+void run_motorB(int PWM);
 
-float pwm;
-
-// DATA LOGGING START*******************************************
-
-struct {
-    uint16_t countA;
-    uint16_t countB;
-    float force;
-    double timestamp;
-} typedef datlog_s;
-
-datlog_s ds;
-
-void update_time(unsigned long& time_elapsed, unsigned long& prev_time );
-void log_data(datlog_s& ds, const unsigned long& timestamp);
-void print_data_formatted(const datlog_s& ds);
-void print_data_raw(datlog_s ds);
-
-unsigned long elapsed_time;
-unsigned long prev_time;
-unsigned long CONV_FACTOR = 1000000; // us / s
-
+float pwmA;
+float pwmB;
 
 // LOAD CELL START*******************************************  
   // serial clock
-#define SCK 5 
+#define SCK A3 // yellow 
   // serial data
-#define SDA 3  
+#define SDA A2 // orange 
 
   // factor which scales force readings to correct value
 float calibration_factor = -185000.51;
@@ -110,28 +137,34 @@ HX711 scale(SDA,SCK);
 Integrator acc_int(Ts_s);
 Integrator vel_int(Ts_s);
 
-
-
-  // mass of the device
-double M;
   // desired mass of the device
-double Md;
+double Md = 2; // kg
   // desired damping ratio
-double Bd;
+double Bd = 0.01;
+
+double ALPHA = 1/(COUNT_DOT_TO_LINEAR * Md);
 
   // pose setpoint
-double acc_sp;
-double vel_sp;
-double pos_sp;
+double acc_sp = 0;
+double vel_sp = 0;
+double pos_sp = 0;
 
   // pose estimation from encoder cntA,B and cntA,B_dot
-double acc;
-double vel;
-double pos;
+double accA;
+double velA;
+double posA;
 
+double accB;
+double velB;
+double posB;
+
+// found this at Ts = 5ms using Ziegler-Nichols tuning method
   // position PD controller
-double Kp;
-double Kd;
+double Kp_A = 0.8 * 100;
+double Kp_B = 0.8 * 120;
+
+double Td_A = 0.075 / 8;
+double Td_B = 0.04 / 8;
 
   // flag indicating new force measurement ready
 bool ready_to_read = false;
@@ -148,6 +181,8 @@ void setup() {
   
   Serial.begin(9600);
     // zero out load cell
+  pinMode(SDA,INPUT);
+  pinMode(SCK,OUTPUT);
   scale.tare();
     // set calib factor
   scale.set_scale(calibration_factor);
@@ -158,8 +193,8 @@ void setup() {
     // run controller ever Ts_ms milliseconds
   MsTimer2::set(Ts_ms,do_control);
   MsTimer2::start();
+   //pos_sp = 0.1/COUNT_DOT_TO_LINEAR;
 }
-
 
 
 void loop() {
@@ -174,8 +209,9 @@ void loop() {
 
 
   // log data
-  log_data(ds,elapsed_time);
-  print_data_raw(ds);
+  //log_data(ds,elapsed_time);
+  //print_data_raw(ds);
+  Serial.println(String(force) + "," + String(acc_sp )+ "," + String(vel_sp )+ "," + String(pos_sp ) );
   
 }
 
@@ -184,10 +220,18 @@ void loop() {
 // MOTOR START*******************************************
   // increments the encoder counts for motors A and B
 void increA() {
-  cntA ++;
+  if(!digitalRead(encA2)) {
+    cntA ++;
+  } else {
+    cntA--;
+  }
 }
 void increB() {
-  cntB ++;
+  if(digitalRead(encB2)) {
+    cntB ++;
+  } else {
+    cntB--;
+  }
 }
 
   // set pin direction of motor pins
@@ -200,29 +244,122 @@ void init_motor_pins() {
   pinMode(PWMA, OUTPUT);//PWM of left motor
   pinMode(PWMB, OUTPUT);//PWM of right motor
   pinMode(STBY, OUTPUT);//enable TB6612FNG
-  pinMode(encA,INPUT);
-  pinMode(encB,INPUT);
-  attachInterrupt(digitalPinToInterrupt(encA),increA,RISING);
-  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encB),increB,RISING);
+  pinMode(encA1,INPUT);
+  pinMode(encA2,INPUT);
+  pinMode(encB1,INPUT);
+  pinMode(encB2,INPUT);
+  digitalWrite(STBY, HIGH);
+  attachInterrupt(digitalPinToInterrupt(encA1),increA,RISING);
+  attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(encB1),increB,RISING);
   interrupts();
 }
 
   // set motor speed and direction
-void run_motors(int IN1, int IN2, int PWM, int speed, int direction) {
-  boolean Pin1 = LOW;
-  boolean Pin2 = HIGH;
+void run_motorA(int PWM){
+  
+  if(PWM > 0) {
+    digitalWrite(MA1,HIGH);
+    digitalWrite(MA2,LOW);
+  } else {
+    digitalWrite(MA1,LOW);
+    digitalWrite(MA2,HIGH);
+    PWM *= -1;
+  }
 
-  if(direction == 1) {
-    Pin1 = HIGH;
-    Pin2 = LOW;
-  } 
-
-  digitalWrite(IN1,Pin1);
-  digitalWrite(IN2,Pin2);
-  analogWrite(PWM,speed);
+  if(PWM < 0) PWM = 0;
+  if(PWM > 255) PWM = 255;
+  
+  analogWrite(PWMA,PWM);
 }
 
+void run_motorB(int PWM){
+
+  if(PWM > 0) {
+    digitalWrite(MB1,HIGH);
+    digitalWrite(MB2,LOW);
+  } else {
+    digitalWrite(MB1,LOW);
+    digitalWrite(MB2,HIGH);
+    PWM *= -1;
+  }
+
+  if(PWM < 0) PWM = 0;
+  if(PWM > 255) PWM = 255;
+  
+  analogWrite(PWMB,PWM);
+}
+
+// CONTROL START ************************************************
+
+  // estimate velocity and accel
+void estimateVelocity() {
+  dcntA = cntA - cntA_prev;
+  cntA_prev = cntA;
+
+  dcntB = cntB - cntB_prev;
+  cntB_prev = cntB;
+
+  cntA_dot = diffA.step(dcntA);
+  cntB_dot = diffB.step(dcntB);  
+
+  velA = cntA_dot * COUNT_DOT_TO_LINEAR;
+  velB = cntB_dot * COUNT_DOT_TO_LINEAR;
+}
+
+void estimateAcceleration() {
+  dcntA_dot = cntA_dot - cntA_dot_prev;
+  cntA_dot_prev = cntA_dot;
+
+  dcntB_dot = cntB_dot - cntB_dot_prev;
+  cntB_dot_prev = cntB_dot;
+
+  cntA_acc = diffA.step(dcntA_dot);
+  cntB_acc = diffB.step(dcntB_dot);  
+}
+
+
+ 
+  // determine pose setpoint from force measurement
+void do_admittance_control() {
+  ready_to_read = scale.is_ready();
+
+  if(ready_to_read) {
+    force = scale.get_units();
+    if(force <= 0.2) force = 0;
+    
+     //acc_sp = (force + Bd*vel_sp)/Md;
+    acc_sp = (force + Bd*vel_sp) / Md; // acceleration of encoder counts
+    
+  vel_sp = acc_int.step(acc_sp); // velocity of encoder counts
+  pos_sp = vel_int.step(vel_sp); // position (number) of encoder counts
+
+//  vel_sp *= ALPHA;
+//  pos_sp *= ALPHA;
+  }
+
+
+  
+}
+
+  // apply PD position controller
+void do_position_control() {
+  
+  pwmA = Kp_A *( ( pos_sp - cntA  ) + Td_A * (vel_sp - cntA_dot));
+  pwmB = Kp_B *( ( pos_sp - cntB  ) + Td_B * (vel_sp - cntB_dot));
+
+  run_motorA(pwmA);
+  run_motorB(pwmB);
+}
+
+void do_control() {
+  // estimate device pose
+  do_admittance_control();
+  do_position_control();
+}
+
+
 // DATA LOGGING START*******************************************
+
 
 void update_time(unsigned long& time_elapsed, unsigned long& prev_time ) {
   time_elapsed += micros() - prev_time;
@@ -245,59 +382,3 @@ void print_data_formatted(const datlog_s& ds) {
 void print_data_raw(datlog_s ds) {
   Serial.println(String(ds.timestamp) + "," + String(ds.countA) + "," + String(ds.countB) + "," + String(ds.force));
 }
-
-// CONTROL START ************************************************
-
-  // estimate velocity and accel
-void estimateVelocity() {
-  dcntA = cntA - cntA_prev;
-  cntA_prev = cntA;
-
-  dcntB = cntB - cntB_prev;
-  cntB_prev = cntB;
-
-  cntA_dot = diffA.step(dcntA);
-  cntB_dot = diffB.step(dcntB);  
-}
-
-void estimateAcceleration() {
-  dcntA_dot = cntA_dot - cntA_dot_prev;
-  cntA_dot_prev = cntA_dot;
-
-  dcntB_dot = cntB_dot - cntB_dot_prev;
-  cntB_dot_prev = cntB_dot;
-
-  cntA_acc = diffA.step(dcntA_dot);
-  cntB_acc = diffB.step(dcntB_dot);  
-}
-
-  // determine pose setpoint from force measurement
-void do_admittance_control() {
-  ready_to_read = scale.is_ready();
-
-  if(ready_to_read) {
-    force = scale.get_units();
-
-    acc_sp = (force + Bd*vel_sp)/Md;
-  }
-
-  vel_sp = acc_int.step(acc_sp);
-  pos_sp = vel_int.step(vel_sp);
-  
-}
-
-  // apply PD position controller
-void do_position_control() {
-  pwm = Kp * ( pos_sp - pos  ) + Kd * (vel_sp - vel);
-
-  run_motors(MA1, MA2, PWMA, pwm, 1);
-  run_motors(MB1, MB2, PWMB, pwm, 1);
-}
-
-void do_control() {
-  // estimate device pose
-
-  do_admittance_control();
-  do_position_control();
-}
-
