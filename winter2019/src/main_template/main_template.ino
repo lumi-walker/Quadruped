@@ -12,7 +12,7 @@
 // SAMPLING CONFIG
 double Ts_ms = 10;
 double Ts_s = Ts_ms / 1000.00;
-
+double dt_s;
 // DEVICE PARAMS
 double WHEEL_RADIUS = 0.032; // meters
 double GEAR_RATIO = 1 / 30.00;
@@ -135,13 +135,15 @@ HX711 scale(SDA, SCK);
 
 // CONTROL ************************************************
 
+volatile double prevt;
+volatile double dt;
 Integrator acc_int(Ts_s);
 Integrator vel_int(Ts_s);
 
 // desired mass of the device
-double Md = .1; // kg
+double Md = 2; // kg
 // desired damping ratio
-double Bd = 3;
+double Bd = 4;
 
 double ALPHA = 1 / COUNT_TO_LINEAR;
 
@@ -164,8 +166,8 @@ double posB;
 double Kp_A = 0.8 * 2095;
 double Kp_B = 0.8 * 2040;
 
-double Td_A = 0.167 / 8;
-double Td_B = 0.1625 / 8;
+double Td_A = 0.167 / 8 ;
+double Td_B = 0.1625 / 8 ;
 
 // flag indicating new force measurement ready
 bool ready_to_read = false;
@@ -193,9 +195,10 @@ void setup() {
 
   // run controller ever Ts_ms milliseconds
   MsTimer2::set(Ts_ms, do_control);
-  // MsTimer2::start();
+  MsTimer2::start();
+  prevt = micros();
   //pos_sp = 0.1/COUNT_TO_LINEAR;
-  Serial.println("Md = " + String(Md) + "," + "Bd = " + String(Bd) + "," );
+//  Serial.println("Md = " + String(Md) + "," + "Bd = " + String(Bd) + "," );
 }
 
 
@@ -215,7 +218,7 @@ void loop() {
   //print_data_raw(ds);
 
   //Serial.println(String(elapsed_time_s) + "," + String(force) + "," + String(acc_sp ) + "," + String(vel_sp )+ "," + String(pos_sp));
-  Serial.println(String(elapsed_time) + "," + String(force) + "," + String(pos_sp ) + "," + String(vel_sp ) + "," + String(acc_sp) + "," + String(posA ) + "," + String(velA ) + "," + String(accA));
+  Serial.println(String(elapsed_time) + "," + String(force) + "," + String(pos_sp ) + "," + String(vel_sp ) + "," + String(acc_sp) + "," + String(posA ) + "," + String(velA ) + "," + String(accA)+ "," + String(pwmA));
 
 }
 
@@ -333,7 +336,8 @@ void do_admittance_control() {
 
   if (ready_to_read) {
 
-    force = 4.44822 * scale.get_units(); //convert lbf to N
+//    force = 4.44822 * scale.get_units(); //convert lbf to N
+    force = 3.5 * scale.get_units(); //convert lbf to N
     if (force <= 0.45) {
       force = 0;
       acc_sp = 0;
@@ -349,15 +353,20 @@ void do_admittance_control() {
     else if (acc_sp <= -40) {
       acc_sp = -40;
     }
+    dt = (micros()-prevt)/1000000.00;
+    prevt = micros();
+    vel_sp = acc_int.stept(acc_sp,dt);
+    //vel_sp = acc_int.step(acc_sp); // velocity of encoder counts
+
+    if(vel_sp >= .7) vel_sp = .7;
     
-    vel_sp = acc_int.step(acc_sp); // velocity of encoder counts
     if (force <= 0.45) {
       force = 0;
       acc_sp = 0;
       vel_sp = 0;
     }
-    pos_sp = vel_int.step(vel_sp); // position (number) of encoder counts
-
+    //pos_sp = vel_int.step(vel_sp); // position (number) of encoder counts
+    pos_sp = acc_int.stept(vel_sp,dt);
     //  vel_sp *= ALPHA;
     //  pos_sp *= ALPHA;
   }
@@ -369,15 +378,19 @@ void do_admittance_control() {
 // apply PD position controller
 void do_position_control() {
   estimateVelocity();
-  //  estimateAcceleration();
+//    estimateAcceleration();
   posA = cntA * COUNT_TO_LINEAR;
   posB = cntB * COUNT_TO_LINEAR;
   //  pwmA = Kp_A *( ( pos_sp - cntA  ) + Td_A * (vel_sp - cntA_dot));
   //  pwmB = Kp_B *( ( pos_sp - cntB  ) + Td_B * (vel_sp - cntB_dot));
   pwmA = Kp_A * ( ( pos_sp - posA  ) + Td_A * (vel_sp - velA));
   pwmB = Kp_B * ( ( pos_sp - posB  ) + Td_B * (vel_sp - velB));
+ 
   run_motorA(pwmA);
   run_motorB(pwmB);
+//  run_motorA(0);
+//  run_motorB(0);
+  
 }
 
 void do_control() {
@@ -392,6 +405,7 @@ void do_control() {
 
 void update_time(unsigned long& time_elapsed, unsigned long& prev_time ) {
   time_elapsed += micros() - prev_time;
+  dt_s = (micros() - prev_time)/100000;
   prev_time = micros();
 }
 

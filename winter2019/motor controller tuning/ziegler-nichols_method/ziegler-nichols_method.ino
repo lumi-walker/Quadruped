@@ -26,7 +26,7 @@ double GEAR_RATIO = 1 / 30.00;
 double CPR = 12; // counts per rev
 double COUNT_TO_LINEAR = (1 / CPR) * (GEAR_RATIO) * (2 * PI) * WHEEL_RADIUS;
 
-double desired_theta_degrees = 100;
+double desired_theta_degrees = 300;
 double desired_theta = desired_theta_degrees * PI / 180;
 //double dtheta_sensor = 30*(desired_theta); // rad
 //int16_t ref_tick = int16_t(dtheta_sensor * 12/(2*PI));
@@ -60,6 +60,11 @@ double KuB = 27400;
 double TuB = 0.1625;
 double KpB = 0.8 * KuB;
 double TdB = TuB / 8;
+//double KpA = 0.8 * 1095;
+//double KpB = 0.8 * 1040;
+//
+//double TdA = 0.167 / 8 *4;
+//double TdB = 0.1625 / 8 *4;
 
 //MA
 void incre() {
@@ -210,7 +215,7 @@ void loop() {
   if (elapsedT > DISPLAY_RATE_uS) {
     //Serial.println(String(cntA));
     //    Serial.println(String(timestamp) + "," + String(x_desired) + "," + String(dist) + "," + String(pwm));
-    Serial.println(String(timestamp) + "," + String(dist) + "," + String(pwm));
+    Serial.println(String(dist) + "," + String(pwm));
     elapsedT = 0;
   }
 }

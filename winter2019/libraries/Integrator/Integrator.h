@@ -11,12 +11,12 @@ public:
 
 	//implements forward euler
 	double step( double curr_vel );
-
+  double stept( double curr_vel, double dt );
 private:
 
 
 
-	// sampling time 
+	// sampling time
 	double _Ts;
 
 	// previous pos and vel

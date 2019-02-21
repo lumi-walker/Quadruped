@@ -15,3 +15,11 @@ double Integrator::step( double curr_vel ) {
 
 	return _pos;
 }
+
+double Integrator::stept( double curr_vel, double dt ) {
+	_pos = _prev_pos + _prev_vel * dt;
+	_prev_pos = _pos;
+	_prev_vel = curr_vel;
+
+	return _pos;
+}
