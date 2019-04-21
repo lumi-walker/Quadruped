@@ -25,11 +25,22 @@ void loop() {
   // read current
   ErrorStatus currentErrStatus;
   std::vector<ErrorStatus> tempErrStatus;
+  std::vector<ErrorStatus> errors2send;
+  
   bool SUCCESS = currentMonitor.readCurrent(current,currentErrStatus);
 
+  if(!SUCCESS) {
+    errors2send.push_back(currentErrStatus);
+  }
+  
   // read temperature
   SUCCESS |= temperatureMonitor.readTemperature(temp,tempErrStatus);
 
+  if(!tempErrStatus.empty()) {
+    for(int i = 0; i < tempErrStatus.size(); i++) {
+      errors2send.push_back(tempErrStatus[i]);
+    }
+  }
 
   // read voltage
   
@@ -40,6 +51,17 @@ void loop() {
      * wait for Due to send OKAY back to Teensy, then shut off relays
      */
 
+     /*
+      * transmit error codes in errors2send vector
+      * display:
+      * Tripple Redundancy compromised in current sensor
+      * Tripple Redundancy compromised in thermocouples
+      * over temperature
+      * over current
+      * over voltage
+      * low voltage
+      * 
+      */
      // wait for response from Due first
      relayMotors.disconnect();
      relayLifts.disconnect();
