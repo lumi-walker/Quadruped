@@ -61,6 +61,7 @@ public:
 			SUCCESS = false;
 			errStatus.errCode = FAULTY_SENSOR_ERROR;
 			errStatus.faultySensorIndex = faultySensorIndex;
+			errStatus.errMsg = FAULTY_CURRENT_SENSOR;
 		} else {
 			faultySensorIndex = (SensorIndex)-1;
 		}
@@ -72,6 +73,7 @@ public:
 				if(currentReadings[i] > OVER_CURRENT_THRESHOLD) {
 					current = currentReadings[i];
 					errStatus.errCode = OVER_CURRENT_AND_FAULTY_SENSOR;
+					errStatus.errMsg = OVER_CURRENT;
 					break;
 				}
 			}
@@ -94,6 +96,7 @@ public:
 			if(current > OVER_CURRENT_THRESHOLD) {
 				SUCCESS = false;
 				errStatus.errCode = OVER_CURRENT_ERROR;
+				errStatus.errMsg = OVER_CURRENT; 
 			}
 		}
 

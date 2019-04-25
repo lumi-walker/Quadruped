@@ -5,9 +5,9 @@
  *    SPI_CLK_PIN -  SPI clock pin on teensy 3.6
  */
  
-#define SPI_MOSI_PIN        7
-#define SPI_MISO_PIN        8
-#define SPI_CLK_PIN         13
+#define TEENSY_MOSI_PIN        7
+#define TEENSY_MISO_PIN        8
+#define TEENSY_CLK_PIN         13
 /************************************************************************************************************/
 /************************************************************************************************************/
 
@@ -70,10 +70,10 @@
  *    DUE_MESSAGE_PIN - communicates error by writing some voltage which maps to an error message
  */
  
-#define TEENSY2DUE_CALL_PIN  39
-#define DUE2TEENSY_CALL_PIN  38
-#define TEENSY2DUE_MSG_PIN	 37
-#define DUE2TEENSY_MSG_PIN	 36 
+#define TEENSY2DUE_CALL_PIN  39  // interrupt
+#define DUE2TEENSY_CALL_PIN  38 
+#define TEENSY_TX_PIN	 26  //transmit on teensy
+#define DUE_RX_PIN	 19 //receive on due 
 
 /************************************************************************************************************/
 /************************************************************************************************************/

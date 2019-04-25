@@ -10,6 +10,7 @@ enum {
 	ALL_SENSORS
 } typedef SensorIndex;
 
+// BMS system will use this to output verbose error log
 enum {
 	OVER_TEMPERATURE_ERROR = 0,
 	OPEN_CIRCUIT_ERROR = 1,
@@ -25,9 +26,30 @@ enum {
 } typedef BMSErrorCode;
 
 
+
+//  commander system will use these to display message
+enum {
+	FAULTY_CURRENT_SENSOR,
+	FAULTY_TEMPERATURE_SENSOR,
+	OVER_TEMPERATURE,
+	OVER_CURRENT,
+	OVER_VOLTAGE,
+	LOW_VOLTAGE,
+	NUM_MESSAGES
+} typedef BMSErrorMessage;
+
+/*
+std::string LCDErrorMessageStrings[NUM_MESSAGES] = {	"FAULTY CURRENT SENSOR",
+																	"FAULTY TEMPERATURE SENSOR",
+																	"OVER TEMPERATURE",
+																	"OVER CURRENT",
+																	"OVER VOLTAGE",
+																	"LOW VOLTAGE" };
+*/
 struct ErrorStatus {
 	SensorIndex faultySensorIndex;
 	BMSErrorCode errCode;
+	BMSErrorMessage errMsg;
 };
 
 float calcPercentDifference(float val1, float val2) {

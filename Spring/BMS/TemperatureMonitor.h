@@ -10,7 +10,7 @@
 #include <Arduino.h>
 
 #define TEMPERATURE_MONITOR_REDUNDANCY_CHECK_THRESHOLD 0.10f
-#define OVER_TEMPERATURE_THRESHOLD	60.f // degrees C
+#define OVER_TEMPERATURE_THRESHOLD	27.f // degrees C
 static const BMSErrorCode TemperatureErrorCode[5] = {OVER_TEMPERATURE_ERROR, 
 								   					OPEN_CIRCUIT_ERROR, 
 								   					SHORT_TO_GND_ERROR, 
@@ -52,6 +52,12 @@ public:
 					if((BMSErrorCode)errCode == err) {
 						t.errCode = err;
 						t.faultySensorIndex = (SensorIndex)i;
+
+						if(err == OVER_TEMPERATURE_ERROR) {
+							t.errMsg = OVER_TEMPERATURE;
+						} else {
+							t.errMsg = FAULTY_TEMPERATURE_SENSOR;
+						}
 						errStatus.push_back(t);
 						break;
 					}
@@ -68,6 +74,7 @@ public:
 			SUCCESS = false;
 			t.errCode = FAULTY_SENSOR_ERROR;
 			t.faultySensorIndex = faultySensorIndex;
+			t.errMsg = FAULTY_TEMPERATURE_SENSOR;
 			errStatus.push_back(t);
 
 			if(faultySensorIndex != ALL_SENSORS) {
@@ -95,6 +102,7 @@ public:
 		if(temp > OVER_TEMPERATURE_THRESHOLD) {
 			SUCCESS = false;
 			t.errCode = OVER_TEMPERATURE_ERROR;
+			t.errMsg = OVER_TEMPERATURE;
 			t.faultySensorIndex = ALL_SENSORS;
 			errStatus.push_back	(t);
 		}
@@ -126,9 +134,9 @@ public:
 
 private:
 
-	Adafruit_MAX31855 tSense[ALL_SENSORS] = {Adafruit_MAX31855(SPI_CLK_PIN, T_SENSE_CHIP_SEL_1, SPI_MISO_PIN),
-											 Adafruit_MAX31855(SPI_CLK_PIN, T_SENSE_CHIP_SEL_2, SPI_MISO_PIN),
-											 Adafruit_MAX31855(SPI_CLK_PIN, T_SENSE_CHIP_SEL_3, SPI_MISO_PIN)};
+	Adafruit_MAX31855 tSense[ALL_SENSORS] = {Adafruit_MAX31855(TEENSY_CLK_PIN, T_SENSE_CHIP_SEL_1, TEENSY_MISO_PIN),
+											 Adafruit_MAX31855(TEENSY_CLK_PIN, T_SENSE_CHIP_SEL_2, TEENSY_MISO_PIN),
+											 Adafruit_MAX31855(TEENSY_CLK_PIN, T_SENSE_CHIP_SEL_3, TEENSY_MISO_PIN)};
 
 	float tempReadings[ALL_SENSORS];
 

@@ -6,6 +6,7 @@
 #include "CurrentMonitor.h"
 #include "TemperatureMonitor.h"
 #include "RelayController.h"
+#include "ErrorLogger.h"
 #define MAX_VOLTAGE_THRESHOLD 46
 #define MIN_VOLTAGE_THRESHOLD 36
 #define MAX_CURRENT_THRESHOLD 30
@@ -15,8 +16,7 @@
 void init() {
 	pinMode(MOTOR_PWR_PIN_1, OUTPUT);
 	pinMode(MOTOR_PWR_PIN_2, OUTPUT);
-	pinMode(MOTOR_PWR_PIN_3, OUTPUT);
-	pinMode(MOTOR_PWR_PIN_4, OUTPUT);
+
 
 	pinMode(LIFTS_PWR_PIN_1, OUTPUT);
 	pinMode(LIFTS_PWR_PIN_2, OUTPUT);
@@ -31,8 +31,10 @@ void init() {
 
 	pinMode(V_SENSE_READ_PIN, INPUT);
 
+	pinMode(DUE2TEENSY_CALL_PIN, INPUT);
+	pinMode(DUE_RX_PIN, INPUT);
 	pinMode(TEENSY2DUE_CALL_PIN, OUTPUT);
-	pinMode(TEENSY2DUE_MSG_PIN, OUTPUT);
+	pinMode(TEENSY_TX_PIN, OUTPUT);
 
 	SPI.begin();
 
