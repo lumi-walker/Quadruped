@@ -3,12 +3,21 @@
 
 #include <string>
 #include <Arduino.h>
+#include <map>
+
 enum {
 	SENSOR_1,
 	SENSOR_2,
 	SENSOR_3,
 	ALL_SENSORS
 } typedef SensorIndex;
+
+
+enum {
+	TEMPERATURE_ERROR,
+	CURRENT_ERROR,
+	VOLTAGE_ERROR
+} typedef BMSErrorType;
 
 // BMS system will use this to output verbose error log
 enum {
@@ -17,14 +26,13 @@ enum {
 	SHORT_TO_GND_ERROR = 2,
 	SHORT_TO_VCC_ERROR = 4,
 	SHORT_TO_VCC_AND_SHORT_TO_GND_ERROR = 6,
-	OVER_CURRENT_ERROR,
-	OVER_CURRENT_AND_FAULTY_SENSOR,
-	FAULTY_SENSOR_ERROR,
-	LOW_VOLTAGE_ERROR,
-	OVER_VOLTAGE_ERROR,
+	OVER_CURRENT_ERROR = 7,
+	OVER_CURRENT_AND_FAULTY_SENSOR = 8,
+	FAULTY_SENSOR_ERROR = 9,
+	LOW_VOLTAGE_ERROR = 10,
+	OVER_VOLTAGE_ERROR = 11,
 	NO_ERROR
 } typedef BMSErrorCode;
-
 
 
 //  commander system will use these to display message
@@ -47,6 +55,7 @@ std::string LCDErrorMessageStrings[NUM_MESSAGES] = {	"FAULTY CURRENT SENSOR",
 																	"LOW VOLTAGE" };
 */
 struct ErrorStatus {
+	BMSErrorType errType;
 	SensorIndex faultySensorIndex;
 	BMSErrorCode errCode;
 	BMSErrorMessage errMsg;

@@ -11,7 +11,7 @@
 
 
 // in Amps
-#define OVER_CURRENT_THRESHOLD 1.f //A
+#define OVER_CURRENT_THRESHOLD 30.f //A
 
 /*
 	ACS722 datasheet specifies total output error to be +/- 2% error
@@ -37,10 +37,16 @@ public:
 	bool readCurrent(float& current, ErrorStatus& errStatus) {
 		// note - do not return SUCCESS too early, need to check for faulty sensor error AND over current error
 		bool SUCCESS = true;
-
+		errStatus.errType = CURRENT_ERROR;
+		
 		// add filtering?
 		for(int i = 0; i < ALL_SENSORS; i++) {
 			currentReadings[i] = iSense[i].readCurrent();
+			
+			if(currentReadings[i] < 0.3) {
+				currentReadings[i] = 0;	
+			}
+
 
 			#ifdef _DEBUG_PRINT_CURRENTS
 			Serial.print("Sensor " + String(i) + " : " + String(currentReadings[i]));
@@ -69,6 +75,8 @@ public:
 		if(faultySensorIndex == ALL_SENSORS) {
 			// check if any 1 of them has over current to warn the user
 			// assume the worst
+			SUCCESS = false;
+			
 			for(int i = 0; i < ALL_SENSORS; i++) {
 				if(currentReadings[i] > OVER_CURRENT_THRESHOLD) {
 					current = currentReadings[i];
@@ -97,6 +105,7 @@ public:
 				SUCCESS = false;
 				errStatus.errCode = OVER_CURRENT_ERROR;
 				errStatus.errMsg = OVER_CURRENT; 
+				errStatus.faultySensorIndex = ALL_SENSORS;
 			}
 		}
 

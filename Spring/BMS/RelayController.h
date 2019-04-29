@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include<TimerOne.h>
 
-#define PULSE_DURATION_MICROS 30000
+#define PULSE_DURATION_MICROS 200000
 
 
 
@@ -14,6 +14,8 @@ public:
 	RelayController(uint8_t pin1, uint8_t pin2) {
 		A1 = pin1;
 		A2 = pin2;
+		pinMode(A1,OUTPUT);
+		pinMode(A2,OUTPUT);
 	}
 
 	void connect(){

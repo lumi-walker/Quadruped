@@ -9,8 +9,8 @@
 #include "BMSUtils.h"
 #include <Arduino.h>
 
-#define TEMPERATURE_MONITOR_REDUNDANCY_CHECK_THRESHOLD 0.10f
-#define OVER_TEMPERATURE_THRESHOLD	27.f // degrees C
+#define TEMPERATURE_MONITOR_REDUNDANCY_CHECK_THRESHOLD 0.15f
+#define OVER_TEMPERATURE_THRESHOLD	50.f // degrees C (max handle is 60)
 static const BMSErrorCode TemperatureErrorCode[5] = {OVER_TEMPERATURE_ERROR, 
 								   					OPEN_CIRCUIT_ERROR, 
 								   					SHORT_TO_GND_ERROR, 
@@ -50,6 +50,7 @@ public:
 				errCode = tSense[i].readError();
 				for(BMSErrorCode err : TemperatureErrorCode) {
 					if((BMSErrorCode)errCode == err) {
+						t.errType = TEMPERATURE_ERROR;
 						t.errCode = err;
 						t.faultySensorIndex = (SensorIndex)i;
 
@@ -72,6 +73,7 @@ public:
 
 		if(isErrors) {
 			SUCCESS = false;
+			t.errType = TEMPERATURE_ERROR;
 			t.errCode = FAULTY_SENSOR_ERROR;
 			t.faultySensorIndex = faultySensorIndex;
 			t.errMsg = FAULTY_TEMPERATURE_SENSOR;
@@ -101,6 +103,7 @@ public:
 
 		if(temp > OVER_TEMPERATURE_THRESHOLD) {
 			SUCCESS = false;
+			t.errType = TEMPERATURE_ERROR;
 			t.errCode = OVER_TEMPERATURE_ERROR;
 			t.errMsg = OVER_TEMPERATURE;
 			t.faultySensorIndex = ALL_SENSORS;
