@@ -7,7 +7,7 @@
 
 File errorLog;
 
-
+#define OKAY_TO_UNPLUG  0xFF
 
 byte ERROR_MESSAGE_MASK = (1 << 7);
 byte CRITICAL_ERROR_MASK = (1 << OVER_TEMPERATURE) | (1 << OVER_CURRENT) | (1 << OVER_VOLTAGE) | (1 << LOW_VOLTAGE);
@@ -26,6 +26,7 @@ uint16_t printCount = 0;
 void DueReplied() {
   DUE_REPLIED = true;
 }
+bool DEBUG_LOG = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -42,9 +43,10 @@ void setup() {
   Serial.println("done");
 }
 
+byte prevErrorMessage = 0;
 
 void loop() {
-  errorLogger.updateTime();
+
   byte errorMessage = 0;
   float current;
   float temp;
@@ -58,15 +60,12 @@ void loop() {
   bool SUCCESS = currentMonitor.readCurrent(current,currentErrStatus);
 
   if(!SUCCESS) {
-
     errors2send.push_back(currentErrStatus);
     errorMessage |= (1 << currentErrStatus.errMsg) | ERROR_MESSAGE_MASK;
-    errorLogger.log(CURRENT_ERROR,errors2send);
-    errors2send.clear();
   }
   
   // read temperature
-  SUCCESS |= temperatureMonitor.readTemperature(temp,tempErrStatus);
+  SUCCESS &= temperatureMonitor.readTemperature(temp,tempErrStatus);
 
   if(!tempErrStatus.empty()) {
     errorMessage |= ERROR_MESSAGE_MASK;
@@ -74,15 +73,26 @@ void loop() {
       errors2send.push_back(tempErrStatus[i]);
       errorMessage |= (1<< tempErrStatus[i].errMsg);
     }
-    errorLogger.log(TEMPERATURE_ERROR,errors2send);
-    errors2send.clear();
-    
   }
 
   // read voltage
   // DOESN'T EXIST YET
-  // SUCCESS |= voltageMonitor.readVoltage(voltage, voltageErrStatus)
+  // SUCCESS &= voltageMonitor.readVoltage(voltage, voltageErrStatus)
+
   
+   if(errorMessage != prevErrorMessage) {
+      // different error message, ping Due
+       Serial.println("WRITE");
+       digitalWrite(TEENSY2DUE_CALL_PIN,HIGH);
+       delay(5);
+       digitalWrite(TEENSY2DUE_CALL_PIN,LOW);
+       Serial.println(errorMessage,BIN);
+       Serial1.write(errorMessage);
+       prevErrorMessage = errorMessage;
+   } else {
+      // do not ping Due  
+   }
+   
   if(!SUCCESS) {
     /*
      * Tell Due there is an error so that it stops the motor
@@ -90,41 +100,30 @@ void loop() {
      * wait for Due to send OKAY back to Teensy, then shut off relays
      */
       
-    
-     digitalWrite(TEENSY2DUE_CALL_PIN,HIGH);
-     delay(5);
-     digitalWrite(TEENSY2DUE_CALL_PIN,LOW);
-     Serial1.write(errorMessage);
-
-     if(errorMessage & CRITICAL_ERROR_MASK) {
-        Serial.println(errorMessage & CRITICAL_ERROR_MASK, BIN);
-        
-        while(!DUE_REPLIED);
-        
-        relayMotors.disconnect();
-        relayLifts.disconnect();  
-        Serial.println("Power Disconnected");
-       
-        /*
-         * log error message
-         */
-         //errorLogger.log(errors2send);
-
-         /*
-          * signal to Due to display that it's okay to disconnect battery now
-          */
-     } else {
-        /*
-         * log error message
-         */
-     }
-
-
-
-        
-      }
-     
+       if(errorMessage & CRITICAL_ERROR_MASK) {
+          Serial.println(errorMessage & CRITICAL_ERROR_MASK, BIN);
+          
+          while(!DUE_REPLIED);
+          
+          relayMotors.disconnect();
+          relayLifts.disconnect();  
+          Serial.println("Power Disconnected");
+         
+          errorLogger.log(true, errors2send); // critical log
+  
+          digitalWrite(TEENSY2DUE_CALL_PIN,HIGH);
+          delay(5);
+          digitalWrite(TEENSY2DUE_CALL_PIN,LOW);
+          Serial1.write(OKAY_TO_UNPLUG);
+          
+       } else {
+           if(DEBUG_LOG) {
+              errorLogger.log(false,errors2send); // not critical log (debug log)
+           }
+       }  
   }
+     
+}
 
   
   
