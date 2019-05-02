@@ -81,23 +81,28 @@ public:
 				if(currentReadings[i] > OVER_CURRENT_THRESHOLD) {
 					current = currentReadings[i];
 					errStatus.errCode = OVER_CURRENT_AND_FAULTY_SENSOR;
+					// prioritize over current
 					errStatus.errMsg = OVER_CURRENT;
 					break;
 				}
 			}
+			// could have written this differently by moving some if statements around...
 		} else {
 			current = 0;
 			for(int i = 0; i < ALL_SENSORS; i++) {
+				// do NOT include the faulty readings in current estimate
 				if(i != faultySensorIndex) {
 					current += currentReadings[i];
 				}
 			}
-			// take average and multiply by 3 
-			// we assume that the current still flows fine through faulty sensor but sensor just can't measure it
-			// therefore the current is still roughly distributed evenly amongst the 3
+			
 			if(faultySensorIndex == -1) {
-				// all sensors are okay... do nothing
+				// all sensors are okay bc isErrors = false... do nothing
 			} else {
+				// there was a faulty sensor
+				// take average of the reliable 2 and multiply by 3 to get an estimate of total current
+				// we assume that the current still flows fine through faulty sensor but sensor just can't measure it
+				// therefore the current is still roughly distributed evenly amongst the 3
 				current *= 3/2;
 			}
 
