@@ -86,8 +86,8 @@ void setup() {
   M2.faststopoff();
   M2.holdingoff();
     
-  M1.setacc(100);
-  M2.setacc(100);
+  M1.setacc(50);
+  M2.setacc(50);
   
   tft.begin();
   loadingScreen();
@@ -265,24 +265,24 @@ void checkMode(){
     readJoystick();
     timer_JS = millis() - prevMillis_JS;
     //if (timer_JS > 500) {
-    if (rRead > 0.1) {
+    if (rRead > 0.2) {
       if (angRead > PI/4 && angRead < 3*PI/4) {
         //Write FORWARD and SPEED
         if (timer_JS > 200) {
-        testSpeed(rRead*1.5 - (abs(PI/2 - angRead)));
-        setspeed(rRead*1.5 - (abs(PI/2 - angRead)),1);
+        testSpeed((rRead-0.2)*1.5);
+        setspeed((rRead-0.2)*1.5,1);
         prevMillis_JS = millis();
         }
         writeTurnMode(1);
         lastJS = 1;
       }
-      else if (angRead > -PI/8 && angRead < PI/8) {
+      else if (angRead > -PI/8 && angRead < PI/8 && rRead > 0.5) {
         //Write Turn R
         writeTurnMode(2);
         turnRight();
         lastJS = 2;
       }
-      else if (angRead > (PI-(PI/8)) && angRead < (PI + (PI/8))) {
+      else if ((angRead > (PI-(PI/8)) || angRead < (-PI + (PI/8))) && rRead > 0.5 ) {
         //Write Turn L
         writeTurnMode(3);
         turnLeft();
@@ -330,7 +330,7 @@ void checkMode(){
           prevMillis = millis();
        }
        readJoystick();
-      if (rRead > 0.1) {
+      if (rRead > 0.5) {
         if (angRead > -PI/4 && angRead < PI/4) {
           
           //Write Turn R
@@ -338,7 +338,7 @@ void checkMode(){
           turnRight();
           lastJS = 2;
         }
-        else if (angRead > (PI-(PI/4)) && angRead < (PI + (PI/4))) {
+        else if (angRead > (PI-(PI/4)) || angRead < (-PI + (PI/4))) {
           //Write Turn L
           writeTurnMode(3);
           turnLeft();
@@ -381,7 +381,7 @@ void checkMode(){
 
 
 void defaultMode() {
-  setspeed(0,1);
+  setspeed(0,1); //holding on
 }
 
 int preVar = 0;

@@ -41,11 +41,11 @@ void setspeed(float speed,bool direc){
 }
 
 void turnRight(){
-	M1.setvel(0.7,1);
-	M2.setvel(0.7,1);
+	M1.setvel(0.3,1);
+	M2.setvel(0.3,1);
 }
 
 void turnLeft(){
-	M1.setvel(0.7,0);
-	M2.setvel(0.7,0);
+	M1.setvel(0.3,0);
+	M2.setvel(0.3,0);
 }
