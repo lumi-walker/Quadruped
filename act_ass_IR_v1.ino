@@ -32,10 +32,13 @@ void setup() {
 
   delay(2000);// to reset motor
   motor_ready();//on,holding,faststop
-
+  analogWrite(DAC1,4095-accset);
   Serial.println("motor ready");
 }
 
+bool decellTime = false;
+float waitTime;
+long startTime_decell = -1;
 void loop() {
 
   checkinput();
@@ -43,16 +46,16 @@ void loop() {
   if (initflag) { //if interrupt happens
     faststopoff_all();
     setspeed(float(velset), bool(1));
-    setacc_all((accset));
     initflag = 0;
     Serial.println("start moving");
     resetSpeed = true;
   }
 
   if (micros() - starttime > steptime && resetSpeed == true) {
+    waitTime = int((float(velset)/float(accset))*1000.0f);
+    decellTime = true;
+    startTime_decell = millis();
     setspeed(float(0), bool(1));
-    setacc_all((accset));
-    faststopon_all();
     resetSpeed = false;
     Serial.println("Setting speed to zero");
   }
@@ -63,6 +66,11 @@ void loop() {
   }
   else if (micros() - starttime < steptime) { //if no interrupt
     Serial.println("moving");
+  }
+
+  if(millis() - startTime_decell >= waitTime && decellTime == true) {
+    faststopon_all();
+    decellTime = false;
   }
 
 }
@@ -96,6 +104,7 @@ void checkinput() {
         if (readString.indexOf("a") > 0) {
 
           accset = n;
+          analogWrite(DAC1,4095-accset);
           Serial.println("acc = " + String(accset));
         }
         else if (readString.indexOf("v") > 0) {
@@ -123,4 +132,3 @@ void checkinput() {
   }
 
 }
-
