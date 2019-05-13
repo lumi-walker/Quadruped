@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include<TimerOne.h>
 
-#define PULSE_DURATION_MICROS 200000
+#define PULSE_DURATION_MICROS 250000
 
 
 

@@ -1,37 +1,59 @@
 
 
 #include "BMS.h"
-#include <vector>
-#include<SD.h>
-#define _DEBUG 1
 
-File errorLog;
 
-#define OKAY_TO_UNPLUG  0xFF
-
+/*
+ * Due/Teensy Error Communication Protocol:
+ * 
+ * The Teensy will ping the Due via a digital pin. 
+ * The Teensy will then send a byte of data to the Due via UART in the following format:
+ * 
+ * 1) the most significant bit (bit 6) will be 1 for an error message and 0 for a voltage message
+ *    ERROR_MESSAGE_MASK is used to tag a message as an error message on the Teensy's end.
+ *    For example:
+ *      msg = 0b00000000 (0 in binary)
+ *      msg | ERROR_MESSAGE_MASK = 0b00000000 | 0b10000000 = 0b10000000 (bitwise logical OR operation)
+ *      
+ * 2) The Due is expected to notify user of shutdown due to critical error. It will know if there is a critical error if:
+ *    msg | CRITICAL_ERROR_MASK = 1
+ */
 byte ERROR_MESSAGE_MASK = (1 << 7);
-byte CRITICAL_ERROR_MASK = (1 << OVER_TEMPERATURE) | (1 << OVER_CURRENT) | (1 << OVER_VOLTAGE) | (1 << LOW_VOLTAGE);
-byte CLEAR_CRITICAL_ERROR  = ~CRITICAL_ERROR_MASK;
+byte CRITICAL_ERROR_MASK = (1 << OVER_TEMPERATURE) | (1 << OVER_VOLTAGE) | (1 << LOW_VOLTAGE);
+
+// BMSError = true when there is a problem with Voltage Monitor or Temperature Monitor
 bool BMSError = false;
 
-CurrentMonitor currentMonitor;
-TemperatureMonitor temperatureMonitor;
-RelayController relayLifts(LIFTS_PWR_PIN_1, LIFTS_PWR_PIN_2);
-RelayController relayMotors(MOTOR_PWR_PIN_1, MOTOR_PWR_PIN_2);
-ErrorLogger errorLogger;
+/*
+ * OKAY_TO_UNPLUG is a special message sent to Due via Serial1 to indicate
+ * to the user that it's okay to unplug the battery
+ */
+#define OKAY_TO_UNPLUG  0xFF
 
-bool CALL_TO_DUE_SENT = false;
+
+//DUE_REPLIED is a flag used to indicate when the Due is done turning off the motors
+// in the event of a critical error (OVER TEMP, OVER VOLTAGE, LOW VOLTAGE)
 volatile bool DUE_REPLIED = false;
-uint16_t printCount = 0;
+
+// Interrupt Service Routine : function that is called when the DUE2TEENSY_CALL_PIN goes from LOW -> HIGH
 void DueReplied() {
   DUE_REPLIED = true;
 }
-bool DEBUG_LOG = false;
+
+
+
+TemperatureMonitor temperatureMonitor;
+RelayController relay(PWR_PIN_1, PWR_PIN_2);
+ErrorLogger errorLogger;
 
 void setup() {
-  // put your setup code here, to run once:
+  // initialize serial monitor
   Serial.begin(9600);
+
+  // initialize UART TX/RX on Teensy
   Serial1.begin(115200);
+
+  // Serial1 has multiple options for TX and RX pins, choose the set
   Serial1.setTX(26);
   Serial1.setRX(27);
 
@@ -39,33 +61,25 @@ void setup() {
   interrupts();
   delay(500);
 
-
-  Serial.println("done");
 }
 
+// prevErrorMessage is used to avoid sending duplicate error messages
 byte prevErrorMessage = 0;
 
 void loop() {
-
+  // variable storing the error message
   byte errorMessage = 0;
-  float current;
+
+  // variables for temperature and voltage readings
   float temp;
   float voltage;
 
-  // read current
-  ErrorStatus currentErrStatus;
+
   std::vector<ErrorStatus> tempErrStatus;
   std::vector<ErrorStatus> errors2send;
   
-  bool SUCCESS = currentMonitor.readCurrent(current,currentErrStatus);
-
-  if(!SUCCESS) {
-    errors2send.push_back(currentErrStatus);
-    errorMessage |= (1 << currentErrStatus.errMsg) | ERROR_MESSAGE_MASK;
-  }
-  
   // read temperature
-  SUCCESS &= temperatureMonitor.readTemperature(temp,tempErrStatus);
+  bool SUCCESS = temperatureMonitor.readTemperature(temp,tempErrStatus);
 
   if(!tempErrStatus.empty()) {
     errorMessage |= ERROR_MESSAGE_MASK;
@@ -75,51 +89,53 @@ void loop() {
     }
   }
 
-  // read voltage
-  // DOESN'T EXIST YET
-  // SUCCESS &= voltageMonitor.readVoltage(voltage, voltageErrStatus)
-
-  
+   /*  
+    *   READ VOLTAGE
+    *   
+    *   SUCCESS &= voltageMonitor.readVoltage(voltage, voltageErrStatus);
+    *   if not success then append errorStatus to errors2send and update errorMessage
+    *   if voltage drops 5%, ping Due and send voltage percentage
+    */
+    
    if(errorMessage != prevErrorMessage) {
       // different error message, ping Due
-       Serial.println("WRITE");
+
+      // trigger interrupt on Due
        digitalWrite(TEENSY2DUE_CALL_PIN,HIGH);
        delay(5);
        digitalWrite(TEENSY2DUE_CALL_PIN,LOW);
-       Serial.println(errorMessage,BIN);
+
+       // write message to Due via UART 
        Serial1.write(errorMessage);
+
        prevErrorMessage = errorMessage;
    } else {
       // do not ping Due  
    }
    
   if(!SUCCESS) {
-    /*
-     * Tell Due there is an error so that it stops the motor
-     * Finish all current, temp, and voltage reads to get all errors
-     * wait for Due to send OKAY back to Teensy, then shut off relays
-     */
+
       
        if(errorMessage & CRITICAL_ERROR_MASK) {
-          Serial.println(errorMessage & CRITICAL_ERROR_MASK, BIN);
-          
+       // critical error... Due warns the user that shutdown is required
+       // wait for Due to turn off motors and respond
           while(!DUE_REPLIED);
+
+       // disconnect motors and lift columns
+          relay.disconnect();
           
-          relayMotors.disconnect();
-          relayLifts.disconnect();  
-          Serial.println("Power Disconnected");
-         
-          errorLogger.log(true, errors2send); // critical log
-  
+       // log errors  
+          errorLogger.log(errors2send); // critical log
+
+       // tell Due that it can display to user that they can unplug the battery now
           digitalWrite(TEENSY2DUE_CALL_PIN,HIGH);
           delay(5);
           digitalWrite(TEENSY2DUE_CALL_PIN,LOW);
           Serial1.write(OKAY_TO_UNPLUG);
           
        } else {
-           if(DEBUG_LOG) {
-              errorLogger.log(false,errors2send); // not critical log (debug log)
-           }
+       // log the errors 
+          errorLogger.log(errors2send); // not critical log (debug log)
        }  
   }
      

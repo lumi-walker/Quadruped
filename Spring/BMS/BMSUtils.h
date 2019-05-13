@@ -15,19 +15,19 @@ enum {
 
 enum {
 	TEMPERATURE_ERROR,
-	CURRENT_ERROR,
+//	CURRENT_ERROR, OBSELETE
 	VOLTAGE_ERROR
 } typedef BMSErrorType;
 
-// BMS system will use this to output verbose error log
+// BMS system will use this to output verbose error log to SD card
 enum {
 	OVER_TEMPERATURE_ERROR = 0,
 	OPEN_CIRCUIT_ERROR = 1,
 	SHORT_TO_GND_ERROR = 2,
 	SHORT_TO_VCC_ERROR = 4,
 	SHORT_TO_VCC_AND_SHORT_TO_GND_ERROR = 6,
-	OVER_CURRENT_ERROR = 7,
-	OVER_CURRENT_AND_FAULTY_SENSOR = 8,
+//	OVER_CURRENT_ERROR = 7, OBSELETE
+//	OVER_CURRENT_AND_FAULTY_SENSOR = 8, OBSELETE
 	FAULTY_SENSOR_ERROR = 9,
 	LOW_VOLTAGE_ERROR = 10,
 	OVER_VOLTAGE_ERROR = 11,
@@ -37,23 +37,15 @@ enum {
 
 //  commander system will use these to display message
 enum {
-	FAULTY_CURRENT_SENSOR,
 	FAULTY_TEMPERATURE_SENSOR,
-	OVER_TEMPERATURE,
+	OVER_TEMPERATURE, // below here is critical error
 	OVER_CURRENT,
 	OVER_VOLTAGE,
 	LOW_VOLTAGE,
 	NUM_MESSAGES
 } typedef BMSErrorMessage;
 
-/*
-std::string LCDErrorMessageStrings[NUM_MESSAGES] = {	"FAULTY CURRENT SENSOR",
-																	"FAULTY TEMPERATURE SENSOR",
-																	"OVER TEMPERATURE",
-																	"OVER CURRENT",
-																	"OVER VOLTAGE",
-																	"LOW VOLTAGE" };
-*/
+
 struct ErrorStatus {
 	BMSErrorType errType;
 	SensorIndex faultySensorIndex;

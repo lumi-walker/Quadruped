@@ -88,6 +88,8 @@ public:
 				temp /= 2;
 
 			} else {
+				// all unreliable... take the max temp reading
+
 				float maxtemp = tmp[0];
 				for(int i = 0; i < ALL_SENSORS; i++) {
 					if(tmp[i] > maxtemp) {
@@ -98,6 +100,7 @@ public:
 			}
 			
 		} else {
+			// take average of all measurements as you read them
 			temp = (tmp[0] + tmp[1] + tmp[2])/3; 
 		}
 
@@ -111,6 +114,7 @@ public:
 		}
 		
 
+/*
 			Serial.println("_____________________________________________________________________________________");
 			Serial.println("TEMPERATURE READINGS");
 			Serial.println("_____________________________________________________________________________________");
@@ -132,6 +136,7 @@ public:
 				Serial.println();
 			}
 		}
+		*/
 		return SUCCESS;
 	}
 

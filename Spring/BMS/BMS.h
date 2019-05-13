@@ -1,9 +1,7 @@
 #include "BMS_pin_assignments.h"
-#include "ACS722.h"
 #include <Arduino.h>
 #include <Adafruit_MAX31855.h>
 #include <SPI.h>
-#include "CurrentMonitor.h"
 #include "TemperatureMonitor.h"
 #include "RelayController.h"
 #include "ErrorLogger.h"
@@ -14,17 +12,13 @@
 
 
 void init() {
-	pinMode(MOTOR_PWR_PIN_1, OUTPUT);
-	pinMode(MOTOR_PWR_PIN_2, OUTPUT);
-
-
-	pinMode(LIFTS_PWR_PIN_1, OUTPUT);
-	pinMode(LIFTS_PWR_PIN_2, OUTPUT);
-
+	pinMode(PWR_PIN_1, OUTPUT);
+	pinMode(PWR_PIN_2, OUTPUT);
+/*
 	pinMode(I_SENSE_READ_PIN_1, INPUT);
 	pinMode(I_SENSE_READ_PIN_2, INPUT);
 	pinMode(I_SENSE_READ_PIN_3, INPUT);
-
+*/
 	pinMode(T_SENSE_CHIP_SEL_1, OUTPUT);
 	pinMode(T_SENSE_CHIP_SEL_2, OUTPUT);
 	pinMode(T_SENSE_CHIP_SEL_3, OUTPUT);
@@ -38,10 +32,5 @@ void init() {
 
 	SPI.begin();
 
-}
-
-void readVoltage(float& result) {
-	uint16_t val = analogRead(V_SENSE_READ_PIN);
-	result = (float(val)/1023)*3.3;
 }
 

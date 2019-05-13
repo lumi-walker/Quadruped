@@ -46,16 +46,6 @@ public:
 			if(currentReadings[i] < 0.3) {
 				currentReadings[i] = 0;	
 			}
-
-
-			#ifdef _DEBUG_PRINT_CURRENTS
-			Serial.print("Sensor " + String(i) + " : " + String(currentReadings[i]));
-			if(i == ALL_SENSORS-1) {
-				Serial.println();
-			} else {
-				Serial.print(" // ");
-			}
-			#endif
 		}
 
 		// check for faulty sensor
@@ -117,6 +107,14 @@ public:
 		return SUCCESS;
 	}
 
+	void printCurrentSensorValues() {
+		for(int i = 0; i < ALL_SENSORS; i++) {
+			currentReadings[i] = iSense[i].readCurrent();
+			Serial.print("Sensor " + String(i) + " : " + String(currentReadings[i]) + " || ");
+		}
+		Serial.println();
+
+	}
 
 private:
 

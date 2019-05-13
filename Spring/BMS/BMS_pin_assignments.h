@@ -20,14 +20,12 @@
  *    POWER_CTRL_PIN_2 - pull high to cut off power to motors
  */
 
-#define MOTOR_PWR_PIN_1    19
-#define MOTOR_PWR_PIN_2    18
+#define PWR_PIN_1    19
+#define PWR_PIN_2    18
 
-#define LIFTS_PWR_PIN_1    15
-#define LIFTS_PWR_PIN_2    14
 /************************************************************************************************************/
 /************************************************************************************************************/
-/* current sensor: ACS722 40AU
+/* current sensor: ACS722 40AU [OBSELETE]
  * BRIEF:
  *    Obtain current measure by reading voltage at the V_IOUT pin on the ACS722.
  * PIN DESCRIPTION:
@@ -36,9 +34,12 @@
  *    I_SENSE_READ_PIN_3 - maps to analog pins A7 on teensy 3.6 and is used to measure V_IOUT on 3rd current sensor.
  */
  
+ /*
 #define I_SENSE_READ_PIN_1  23
 #define I_SENSE_READ_PIN_2  22
 #define I_SENSE_READ_PIN_3  21
+*/
+
 /************************************************************************************************************/
 /************************************************************************************************************/
 /* Thermalcouple sensor: MAX31855 IC (ADA269)
